@@ -1,5 +1,15 @@
 # curseforge-sdk-go
 
+## 0.2.0
+
+### Minor Changes
+
+- e58d90b: Add changesets for automated version management and releases
+
+  - Integrate changesets for version bumping and changelog generation
+  - Add auto-release workflow that triggers on merged PRs with changesets
+  - Add changeset check workflow to enforce changesets on PRs
+
 ## 0.1.0
 
 ### Minor Changes
