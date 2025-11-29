@@ -1,5 +1,14 @@
 # curseforge-sdk-go
 
+## 0.2.1
+
+### Patch Changes
+
+- e0df944: Remove duplicate release job from build workflow
+
+  - Release is now handled exclusively by auto-release.yml with changesets
+  - Prevents duplicate workflow runs on PR merge
+
 ## 0.2.0
 
 ### Minor Changes
