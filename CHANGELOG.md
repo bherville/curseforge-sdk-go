@@ -1,5 +1,11 @@
 # curseforge-sdk-go
 
+## 0.2.2
+
+### Patch Changes
+
+- 9830d01: Skip build workflow on release commits to prevent double workflow runs
+
 ## 0.2.1
 
 ### Patch Changes

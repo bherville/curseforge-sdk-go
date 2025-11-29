@@ -1,6 +1,6 @@
 {
   "name": "curseforge-sdk-go",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": false,
   "description": "Go SDK for the CurseForge API",
   "repository": {
