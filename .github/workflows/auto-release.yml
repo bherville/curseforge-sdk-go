@@ -1,44 +1,85 @@
-# CurseForge SDK Go - Auto Release
+# CurseForge SDK Go - Auto Release with Changesets
 #
-# Automatically creates releases based on pull request labels
-# Uses PSModule/Auto-Release to handle versioning and releases
-#
-# Labels:
-#   - major, breaking: Major release (1.x.x -> 2.0.0)
-#   - minor, feature:  Minor release (x.1.x -> x.2.0)
-#   - patch, fix:      Patch release (x.x.1 -> x.x.2)
+# When a PR with changesets is merged, this workflow:
+# 1. Consumes the changesets (bumps version, updates changelog)
+# 2. Commits the version bump
+# 3. Creates a git tag
+# 4. Creates a GitHub release
 
-name: Auto-Release
+name: Release
 
 on:
-  pull_request_target:
+  push:
     branches:
       - main
-    types:
-      - closed
-      - opened
-      - reopened
-      - synchronize
-      - labeled
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
-  Auto-Release:
+  release:
+    name: Release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Auto-Release
-        uses: PSModule/Auto-Release@v1
         with:
-          VersionPrefix: 'v'
-          AutoPatching: true
-          CreateMajorTag: true
-          CreateMinorTag: true
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check for changesets
+        id: changesets
+        run: |
+          if [ -n "$(ls -A .changeset/*.md 2>/dev/null | grep -v README.md)" ]; then
+            echo "has_changesets=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changesets=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Version and Release
+        id: release
+        if: steps.changesets.outputs.has_changesets == 'true'
+        run: |
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Run changeset version to bump version and update changelog
+          npx changeset version
+          
+          # Get the new version
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v$VERSION"
+          
+          # Commit the version bump
+          git add -A
+          git commit -m "chore: release $TAG"
+          
+          # Create and push tag
+          git tag "$TAG"
+          git push origin main --tags
+          
+          echo "released=true" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        if: steps.release.outputs.released == 'true'
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.release.outputs.tag }}
+          name: Release ${{ steps.release.outputs.tag }}
+          bodyFile: "CHANGELOG.md"
+          makeLatest: true

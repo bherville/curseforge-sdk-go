@@ -1,0 +1,19 @@
+{
+  "name": "curseforge-sdk-go",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Go SDK for the CurseForge API",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bherville/curseforge-sdk-go.git"
+  },
+  "license": "MIT",
+  "scripts": {
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "echo 'Release handled by GitHub Actions'"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0"
+  }
+}
