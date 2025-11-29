@@ -1,0 +1,105 @@
+# CurseForge SDK Go - CI Build
+#
+# Builds and tests the SDK on pushes and PRs
+# Changesets handles version management and tagging
+
+name: Build
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  GO_VERSION: '1.22'
+
+jobs:
+  # Build and test
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -v ./...
+
+      - name: Test with race detector
+        run: go test -race -v ./...
+
+  # Create release when tagged
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
+
+  # Changesets: Version Packages PR and Tag on merge
+  changesets:
+    name: Changesets
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create Release Pull Request or Tag
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          title: "Version Packages"
+          commit: "chore: version packages"
+          version: npm run version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create tag after version bump
+        if: steps.changesets.outputs.hasChangesets == 'false'
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAG_NAME="v${PKG_VERSION}"
+          
+          # Check if tag already exists
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists, skipping"
+          else
+            echo "Creating tag: $TAG_NAME"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+            git push origin "$TAG_NAME"
+          fi
