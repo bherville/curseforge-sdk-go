@@ -1,0 +1,44 @@
+# CurseForge SDK Go - Auto Release
+#
+# Automatically creates releases based on pull request labels
+# Uses PSModule/Auto-Release to handle versioning and releases
+#
+# Labels:
+#   - major, breaking: Major release (1.x.x -> 2.0.0)
+#   - minor, feature:  Minor release (x.1.x -> x.2.0)
+#   - patch, fix:      Patch release (x.x.1 -> x.x.2)
+
+name: Auto-Release
+
+on:
+  pull_request_target:
+    branches:
+      - main
+    types:
+      - closed
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  Auto-Release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Auto-Release
+        uses: PSModule/Auto-Release@v1
+        with:
+          VersionPrefix: 'v'
+          AutoPatching: true
+          CreateMajorTag: true
+          CreateMinorTag: true
