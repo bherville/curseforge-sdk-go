@@ -1,0 +1,51 @@
+# Changeset Check
+#
+# Ensures that PRs include a changeset file describing the changes.
+# This check must pass before a PR can be merged.
+
+name: Changeset Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check:
+    name: Check for changeset
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check for changesets
+        run: |
+          # Get list of changeset files (excluding README.md)
+          CHANGESETS=$(ls -A .changeset/*.md 2>/dev/null | grep -v README.md || true)
+          
+          if [ -z "$CHANGESETS" ]; then
+            echo "::error::No changeset found! Please run 'npx changeset' to create one."
+            echo ""
+            echo "To add a changeset:"
+            echo "  1. Run: npx changeset"
+            echo "  2. Select the type of change (major/minor/patch)"
+            echo "  3. Write a summary of your changes"
+            echo "  4. Commit the generated file in .changeset/"
+            echo ""
+            echo "If this PR doesn't need a release (e.g., docs only), you can run:"
+            echo "  npx changeset --empty"
+            exit 1
+          fi
+          
+          echo "✅ Found changeset(s):"
+          echo "$CHANGESETS"
